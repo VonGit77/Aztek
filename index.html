@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aztek Admin Panel</title>
+  <title>Aztek Webapp</title>
   <style>
     body {
       margin: 0;
@@ -11,97 +12,172 @@
       font-family: sans-serif;
       background: #111 url('aztek_bg.jpg') center/cover no-repeat;
       color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
     }
-    .panel {
-      background: rgba(0,0,0,0.8);
+    .container {
+      max-width: 768px;
+      margin: 0 auto;
       padding: 20px;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 600px;
     }
-    h1 {
+    h1, h3 {
       text-align: center;
+    }
+    .lang-switch {
+      text-align: right;
       margin-bottom: 10px;
     }
-    #orders {
-      margin-top: 10px;
-    }
-    .order {
-      background: #222;
-      padding: 10px;
-      margin-bottom: 10px;
+    .lang-switch button {
+      margin-left: 5px;
+      padding: 4px 10px;
+      cursor: pointer;
+      border: none;
       border-radius: 5px;
+      background: #457b9d;
+      color: #fff;
     }
-    button {
-      padding: 5px 10px;
+    .menu-item {
+      background: rgba(0,0,0,0.8);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .menu-item h3 {
+      margin: 0 0 5px 0;
+    }
+    .menu-item p {
+      margin: 5px 0;
+    }
+    .menu-item button {
       background: #e63946;
       border: none;
       color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #cart {
+      background: rgba(0,0,0,0.8);
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+    #submitOrder {
+      display: block;
+      width: 100%;
+      background: #1d3557;
+      color: #fff;
+      padding: 10px;
+      border: none;
       border-radius: 5px;
       cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div class="panel">
-    <h1>Aztek Admin</h1>
-    <p>Добро пожаловать, <strong>@PoliGFs</strong></p>
-    <div id="orders"></div>
+  <div class="container">
+    <div class="lang-switch">
+      <button onclick="setLang('ru')">Русский</button>
+      <button onclick="setLang('pl')">Polski</button>
+    </div>
+    <h1 id="title">Aztek Menu</h1>
+
+    <div class="menu-item">
+      <h3>Burrito</h3>
+      <p class="desc">Pszenna tortilla z mięsem, ryżem, fasolką, salsą, dodatki.</p>
+      <p><strong>29 zł</strong></p>
+      <button class="add-btn" onclick="addToCart('Burrito', 29)">Добавить в корзину</button>
+    </div>
+    <div class="menu-item">
+      <h3>Quesadilla</h3>
+      <p class="desc">Tortilla z mięsem, warzywami i serem, opiekana. Podana z salsą i śmietaną.</p>
+      <p><strong>38 zł</strong></p>
+      <button class="add-btn" onclick="addToCart('Quesadilla', 38)">Добавить в корзину</button>
+    </div>
+
+    <div id="cart">
+      <h3 id="cart-title">Корзина</h3>
+      <div id="cart-items"></div>
+      <p><strong><span id="total-label">Итого</span>: <span id="total">0</span> zł</strong></p>
+      <button id="submitOrder" onclick="submitOrder()">Оформить заказ</button>
+    </div>
   </div>
 
   <script>
     const BOT_TOKEN = '7875371399:AAHyPpvRWtDPn6yHoGpNdGkyNRTuyltrh_0';
     const ADMIN_ID = '7903538631';
-    const ordersEl = document.getElementById('orders');
+    let cart = [];
+    let lang = 'ru';
 
-    async function notifyTelegram(order) {
-      const text = `\u{1F6D2} Новый заказ от @${order.user}\n` +
-        `${order.items.map(i => `• ${i[0]} (${i[1]})`).join('\n')}\n\n` +
-        `Сумма: ${order.total} zł`;
+    const translations = {
+      ru: {
+        title: 'Меню Aztek',
+        cartTitle: 'Корзина',
+        add: 'Добавить в корзину',
+        total: 'Итого',
+        submit: 'Оформить заказ',
+        success: 'Заказ отправлен!'
+      },
+      pl: {
+        title: 'Menu Aztek',
+        cartTitle: 'Koszyk',
+        add: 'Dodaj do koszyka',
+        total: 'Razem',
+        submit: 'Złóż zamówienie',
+        success: 'Zamówienie wysłane!'
+      }
+    };
 
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    function setLang(l) {
+      lang = l;
+      document.getElementById('title').textContent = translations[lang].title;
+      document.getElementById('cart-title').textContent = translations[lang].cartTitle;
+      document.getElementById('total-label').textContent = translations[lang].total;
+      document.getElementById('submitOrder').textContent = translations[lang].submit;
+
+      document.querySelectorAll('.add-btn').forEach(btn => {
+        btn.textContent = translations[lang].add;
+      });
+    }
+
+    function addToCart(item, price) {
+      cart.push({ item, price });
+      updateCart();
+    }
+
+    function updateCart() {
+      const cartItemsEl = document.getElementById('cart-items');
+      cartItemsEl.innerHTML = '';
+      cart.forEach((entry) => {
+        cartItemsEl.innerHTML += `<p>${entry.item} - ${entry.price} zł</p>`;
+      });
+      const total = cart.reduce((sum, entry) => sum + entry.price, 0);
+      document.getElementById('total').textContent = total;
+    }
+
+    function submitOrder() {
+      const orderText = `🛒 Новый заказ:
+` +
+        cart.map(i => `• ${i.item} - ${i.price} zł`).join('
+') +
+        `
+
+Итого: ${cart.reduce((sum, i) => sum + i.price, 0)} zł`;
+
+      fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: ADMIN_ID,
-          text: text
+          text: orderText
         })
+      }).then(() => {
+        alert(translations[lang].success);
+        cart = [];
+        updateCart();
       });
     }
 
-    function loadOrders() {
-      const data = JSON.parse(localStorage.getItem('aztek_orders') || '[]');
-      ordersEl.innerHTML = '';
-      if (!data.length) {
-        ordersEl.innerHTML = '<p>Нет заказов</p>';
-        return;
-      }
-      data.forEach((order, i) => {
-        const el = document.createElement('div');
-        el.className = 'order';
-        el.innerHTML = `
-          <p><strong>От:</strong> @${order.user}</p>
-          <p><strong>Сумма:</strong> ${order.total} zł</p>
-          <p><strong>Состав:</strong><br>${order.items.map(x => `- ${x[0]} (${x[1]})`).join('<br>')}</p>
-          <button onclick="deleteOrder(${i})">Удалить</button>
-        `;
-        ordersEl.appendChild(el);
-      });
-    }
-
-    function deleteOrder(index) {
-      const data = JSON.parse(localStorage.getItem('aztek_orders') || '[]');
-      data.splice(index, 1);
-      localStorage.setItem('aztek_orders', JSON.stringify(data));
-      loadOrders();
-    }
-
-    window.onload = loadOrders;
+    // Инициализировать язык по умолчанию
+    setLang('ru');
   </script>
 </body>
 </html>
