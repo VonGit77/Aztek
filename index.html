@@ -2,60 +2,106 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Aztek Tex Mex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aztek Admin Panel</title>
   <style>
     body {
-      font-family: sans-serif;
       margin: 0;
-      background: url('https://aztek-static.vercel.app/logo-bg.jpg') no-repeat center center/cover;
-      color: white;
-      text-align: center;
+      padding: 0;
+      font-family: sans-serif;
+      background: #111 url('aztek_bg.jpg') center/cover no-repeat;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
     }
-    .container {
-      background: rgba(0,0,0,0.7);
-      padding: 2em;
-      max-width: 500px;
-      margin: auto;
+    .panel {
+      background: rgba(0,0,0,0.8);
+      padding: 20px;
       border-radius: 10px;
-      margin-top: 2em;
+      width: 90%;
+      max-width: 600px;
     }
     h1 {
-      color: #ffcc00;
+      text-align: center;
+      margin-bottom: 10px;
     }
-    .menu-item {
-      margin: 1em 0;
-      padding: 0.5em;
-      border-bottom: 1px solid #fff3;
+    #orders {
+      margin-top: 10px;
     }
-    .price {
-      font-weight: bold;
+    .order {
+      background: #222;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
     }
     button {
-      margin-top: 1em;
-      background: #ffcc00;
-      color: black;
-      padding: 0.5em 1em;
+      padding: 5px 10px;
+      background: #e63946;
       border: none;
+      color: white;
       border-radius: 5px;
       cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🌮 Aztek Tex Mex</h1>
-    <p>Wybierz danie i kliknij, by zamówić:</p>
-    <div class="menu-item">
-      🌯 Burrito <span class="price">29,00 zł</span>
-    </div>
-    <div class="menu-item">
-      🥗 Sałatka Cezar z Kurczakiem <span class="price">27,00 zł</span>
-    </div>
-    <div class="menu-item">
-      🧀 Quesadilla <span class="price">38,00 zł</span>
-    </div>
-    <button onclick="window.location.href='https://t.me/AztekTexMexBot'">Zamów przez Telegram</button>
+  <div class="panel">
+    <h1>Aztek Admin</h1>
+    <p>Добро пожаловать, <strong>@PoliGFs</strong></p>
+    <div id="orders"></div>
   </div>
+
+  <script>
+    const BOT_TOKEN = '7875371399:AAHyPpvRWtDPn6yHoGpNdGkyNRTuyltrh_0';
+    const ADMIN_ID = '7903538631';
+    const ordersEl = document.getElementById('orders');
+
+    async function notifyTelegram(order) {
+      const text = `\u{1F6D2} Новый заказ от @${order.user}\n` +
+        `${order.items.map(i => `• ${i[0]} (${i[1]})`).join('\n')}\n\n` +
+        `Сумма: ${order.total} zł`;
+
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: ADMIN_ID,
+          text: text
+        })
+      });
+    }
+
+    function loadOrders() {
+      const data = JSON.parse(localStorage.getItem('aztek_orders') || '[]');
+      ordersEl.innerHTML = '';
+      if (!data.length) {
+        ordersEl.innerHTML = '<p>Нет заказов</p>';
+        return;
+      }
+      data.forEach((order, i) => {
+        const el = document.createElement('div');
+        el.className = 'order';
+        el.innerHTML = `
+          <p><strong>От:</strong> @${order.user}</p>
+          <p><strong>Сумма:</strong> ${order.total} zł</p>
+          <p><strong>Состав:</strong><br>${order.items.map(x => `- ${x[0]} (${x[1]})`).join('<br>')}</p>
+          <button onclick="deleteOrder(${i})">Удалить</button>
+        `;
+        ordersEl.appendChild(el);
+      });
+    }
+
+    function deleteOrder(index) {
+      const data = JSON.parse(localStorage.getItem('aztek_orders') || '[]');
+      data.splice(index, 1);
+      localStorage.setItem('aztek_orders', JSON.stringify(data));
+      loadOrders();
+    }
+
+    window.onload = loadOrders;
+  </script>
 </body>
 </html>
